@@ -15,82 +15,87 @@ define([
  * @param{runtime} runtime
  * @param{search} search
  */ (record, render, runtime, search, email, file) => {
-  let emailParameters = Object.freeze({
-    subsidiaries: [
-      {
-        name: "Healthcare2U, LLC",
-        id: 2,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2U Physician Services-New York",
-        id: 16,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UAR Network, PLLC",
-        id: 14,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UAZ Network, PLLC",
-        id: 13,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UCA Network, Professional Corporation",
-        id: 15,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UIA Network, PLLC",
-        id: 17,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2ULA Network, Professional Corporation",
-        id: 18,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UNV Network (Rodriguez), PLLC",
-        id: 11,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "Healthcare2U Physician Services",
-        id: 7,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "HC2UTX Network, LLC",
-        id: 25,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "Healthcare2UNJ Network, PC",
-        id: 10,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-      {
-        name: "PrimeCare Group Strategies, LLC",
-        id: 27,
-        sender: 2021,
-        emailTemplate: 7,
-      },
-    ],
-  });
+   function getEmailParams(){
+     let params = getParameters();
+     return  Object.freeze({
+       subsidiaries: [
+         {
+           name: "Healthcare2U, LLC",
+           id: 2,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2U Physician Services-New York",
+           id: 16,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UAR Network, PLLC",
+           id: 14,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UAZ Network, PLLC",
+           id: 13,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UCA Network, Professional Corporation",
+           id: 15,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UIA Network, PLLC",
+           id: 17,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2ULA Network, Professional Corporation",
+           id: 18,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UNV Network (Rodriguez), PLLC",
+           id: 11,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "Healthcare2U Physician Services",
+           id: 7,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "HC2UTX Network, LLC",
+           id: 25,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "Healthcare2UNJ Network, PC",
+           id: 10,
+           sender: params.hc2uSender,
+           emailTemplate: params.hc2uTemplate,
+         },
+         {
+           name: "PrimeCare Group Strategies, LLC",
+           id: 27,
+           sender: params.primeSender,
+           emailTemplate: params.primeCareTemplate,
+         },
+       ],
+     });
+   }
+
+
 
   /**
    * Defines the WorkflowAction script trigger point.
@@ -109,6 +114,8 @@ define([
     let sender = null;
     let emailTemplate = null;
     const subsidiary = bpRec.getValue("subsidiary");
+    let emailParameters = getEmailParams()
+    log.debug("emailparams", emailParameters)
     try {
       for (let i = 0; i < emailParameters.subsidiaries.length; i++) {
         if (subsidiary == emailParameters.subsidiaries[i].id) {
@@ -127,7 +134,7 @@ define([
         customRecord: null,
       });
       log.debug("email parameters", { sender, emailTemplate });
-      let transanctionType = "VendorBill";
+
       for (let i = 0; i < bpRec.getLineCount("apply"); i++) {
         bpRec.selectLine({
           sublistId: "apply",
@@ -142,49 +149,36 @@ define([
           fieldId: "internalid",
         });
 
-        if (tranType.toString() == "Journal") {
-          transanctionType = "vendorpayment";
-          break;
-        } else {
-          transanctionType = "vendorbill";
+        if (tranType == "VendBill") {
           billIds.push(internalId);
         }
       }
-      log.debug("transanctionType", transanctionType);
-      if (transanctionType != "vendorbill") {
-        let billFileIds = [];
+      let transanctionType = "";
+      let allFileIds = [];
+      let billFileIds = [];
+      if (billIds.length > 0) {
+        transanctionType = "vendorbill";
         billIds.forEach((recId) => {
           billFileIds.push(getAttachedFile({ recId, transanctionType }));
         });
-        billFileIds = billFileIds.flat(1);
-        log.debug("billFileIds", billFileIds);
-        let attachments = new Array();
-        billFileIds.forEach((internalid) =>
-          attachments.push(file.load(internalid))
-        );
-        email.send({
-          author: sender,
-          body: mailTemplate.body,
-          recipients: 1896,
-          subject: mailTemplate.subject,
-          attachments: attachments,
-        });
-      } else {
-        let attachments = new Array();
-        let attachmentsId = getAttachedFile({ recId, transanctionType });
-        attachmentsId.forEach((internalid) =>
-          attachments.push(file.load(internalid))
-        );
-
-        log.debug("attachments", attachments);
-        email.send({
-          author: sender,
-          body: mailTemplate.body,
-          recipients: 1896,
-          subject: mailTemplate.subject,
-          attachments: attachments,
-        });
       }
+      transanctionType = "vendorpayment";
+      let billPaymentFileIds = getAttachedFile({ recId, transanctionType });
+      allFileIds = [billFileIds, billPaymentFileIds];
+
+      allFileIds = allFileIds.flat(2);
+      log.debug("allFileIds", allFileIds);
+      let attachments = new Array();
+      allFileIds.forEach((internalid) =>
+        attachments.push(file.load(internalid))
+      );
+      email.send({
+        author: sender,
+        body: mailTemplate.body,
+        recipients: entity,
+        subject: mailTemplate.subject,
+        attachments: attachments,
+      });
     } catch (e) {
       log.error("onAction", e.message);
     }
@@ -255,117 +249,28 @@ define([
       log.error("getAttachedFile", e.message);
     }
   };
-  // const getRelatedFiles = (transactionId) => {
-  //   let arrAttachmentObjects = [];
-  //   let purchaseReqSearchObj = search.create({
-  //     type: "purchaserequisition",
-  //     filters: [
-  //       ["type", "anyof", "PurchReq"],
-  //       "AND",
-  //       ["internalid", "anyof", transactionId],
-  //       "AND",
-  //       ["mainline", "is", "T"],
-  //     ],
-  //     columns: [
-  //       search.createColumn({
-  //         name: "internalid",
-  //         join: "file",
-  //         sort: search.Sort.ASC,
-  //         label: "Internal ID",
-  //       }),
-  //       search.createColumn({
-  //         name: "name",
-  //         join: "file",
-  //         label: "Name",
-  //       }),
-  //       search.createColumn({
-  //         name: "documentsize",
-  //         join: "file",
-  //         label: "Size (KB)",
-  //       }),
-  //     ],
-  //   });
-  //   let searchResultCount = purchaseReqSearchObj.runPaged().count;
-  //   log.debug("PurchaseRequisition result count", searchResultCount);
-  //   purchaseReqSearchObj.run().each(function (result) {
-  //     let intAttachmentId = result.getValue({
-  //       name: "internalid",
-  //       join: "file",
-  //     });
-  //     let flDocumentSize = result.getValue({
-  //       name: "documentsize",
-  //       join: "file",
-  //     });
-  //
-  //     log.debug({
-  //       title: "intAttachmentId + flDocumentSize",
-  //       details: intAttachmentId + " + " + flDocumentSize,
-  //     });
-  //
-  //     if (intAttachmentId) {
-  //       let objAttachmentDetails = {};
-  //       objAttachmentDetails.intAttachmentId = intAttachmentId;
-  //       objAttachmentDetails.flDocumentSize = flDocumentSize;
-  //
-  //       arrAttachmentObjects.push(objAttachmentDetails);
-  //     }
-  //
-  //     return true;
-  //   });
-  //
-  //   let purchaserequisitionSearchObj = search.create({
-  //     type: "purchaserequisition",
-  //     filters: [
-  //       ["type", "anyof", "PurchReq"],
-  //       "AND",
-  //       ["mainline", "is", "F"],
-  //       "AND",
-  //       ["internalid", "anyof", transactionId],
-  //       "AND",
-  //       [
-  //         "formulanumeric: CASE WHEN {custcol_line_attachment} IS NOT NULL THEN 1 ELSE 0 END",
-  //         "equalto",
-  //         "1",
-  //       ],
-  //     ],
-  //     columns: [
-  //       search.createColumn({
-  //         name: "custcol_line_attachment",
-  //         label: "Line Attachment",
-  //       }),
-  //       search.createColumn({
-  //         name: "formulatext",
-  //         formula: "{custcol_line_attachment.id}",
-  //         label: "Formula (Text)",
-  //       }),
-  //     ],
-  //   });
-  //   let count = purchaserequisitionSearchObj.runPaged().count;
-  //   log.debug("purchaserequisitionSearchObj result count", count);
-  //   purchaserequisitionSearchObj.run().each(function (result) {
-  //     let intAttachmentLineId = result.getValue({
-  //       name: "formulatext",
-  //     });
-  //     let flDocumentLineSize = 0;
-  //
-  //     log.debug({
-  //       title: "intAttachmentLineId + flDocumentLineSize",
-  //       details: intAttachmentLineId + " + " + flDocumentLineSize,
-  //     });
-  //
-  //     if (intAttachmentLineId) {
-  //       let objAttachmentDetails = {};
-  //       objAttachmentDetails.intAttachmentId = intAttachmentLineId;
-  //       objAttachmentDetails.flDocumentSize = flDocumentLineSize;
-  //
-  //       arrAttachmentObjects.push(objAttachmentDetails);
-  //     }
-  //
-  //     return true;
-  //   });
-  //
-  //   return arrAttachmentObjects;
-  // };
+
+  function getParameters() {
+    try {
+      const scriptObj = runtime.getCurrentScript();
+      return {
+        hc2uSender: scriptObj.getParameter(
+          "custscript_serp_default_hc2u_sender"
+        ),
+        primeSender: scriptObj.getParameter(
+          "custscript_serp_default_prime_sender"
+        ),
+        hc2uTemplate: scriptObj.getParameter(
+          "custscript_serp_default_hc2u_template"
+        ),
+        primeCareTemplate: scriptObj.getParameter(
+          "custscript_serp_default_prime_template"
+        ),
+      };
+    } catch (e) {
+      log.error("getParameters", e.message);
+    }
+  }
 
   return { onAction };
 });
