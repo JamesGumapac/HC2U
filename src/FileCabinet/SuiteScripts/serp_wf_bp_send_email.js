@@ -14,88 +14,88 @@ define([
  * @param{render} render
  * @param{runtime} runtime
  * @param{search} search
+ * @param email
+ * @param file
  */ (record, render, runtime, search, email, file) => {
-   function getEmailParams(){
-     let params = getParameters();
-     return  Object.freeze({
-       subsidiaries: [
-         {
-           name: "Healthcare2U, LLC",
-           id: 2,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2U Physician Services-New York",
-           id: 16,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UAR Network, PLLC",
-           id: 14,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UAZ Network, PLLC",
-           id: 13,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UCA Network, Professional Corporation",
-           id: 15,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UIA Network, PLLC",
-           id: 17,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2ULA Network, Professional Corporation",
-           id: 18,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UNV Network (Rodriguez), PLLC",
-           id: 11,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "Healthcare2U Physician Services",
-           id: 7,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "HC2UTX Network, LLC",
-           id: 25,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "Healthcare2UNJ Network, PC",
-           id: 10,
-           sender: params.hc2uSender,
-           emailTemplate: params.hc2uTemplate,
-         },
-         {
-           name: "PrimeCare Group Strategies, LLC",
-           id: 27,
-           sender: params.primeSender,
-           emailTemplate: params.primeCareTemplate,
-         },
-       ],
-     });
-   }
-
-
+  function getEmailParams() {
+    let params = getParameters();
+    return Object.freeze({
+      subsidiaries: [
+        {
+          name: "Healthcare2U, LLC",
+          id: 2,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2U Physician Services-New York",
+          id: 16,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UAR Network, PLLC",
+          id: 14,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UAZ Network, PLLC",
+          id: 13,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UCA Network, Professional Corporation",
+          id: 15,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UIA Network, PLLC",
+          id: 17,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2ULA Network, Professional Corporation",
+          id: 18,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UNV Network (Rodriguez), PLLC",
+          id: 11,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "Healthcare2U Physician Services",
+          id: 7,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "HC2UTX Network, LLC",
+          id: 25,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "Healthcare2UNJ Network, PC",
+          id: 10,
+          sender: params.hc2uSender,
+          emailTemplate: params.hc2uTemplate,
+        },
+        {
+          name: "PrimeCare Group Strategies, LLC",
+          id: 27,
+          sender: params.primeSender,
+          emailTemplate: params.primeCareTemplate,
+        },
+      ],
+    });
+  }
 
   /**
    * Defines the WorkflowAction script trigger point.
@@ -111,11 +111,12 @@ define([
     const bpRec = scriptContext.newRecord;
     let recId = scriptContext.newRecord.id;
     let entity = bpRec.getValue("entity");
+    let transactionToUpdate = [];
     let sender = null;
     let emailTemplate = null;
     const subsidiary = bpRec.getValue("subsidiary");
-    let emailParameters = getEmailParams()
-    log.debug("emailparams", emailParameters)
+    let emailParameters = getEmailParams();
+
     try {
       for (let i = 0; i < emailParameters.subsidiaries.length; i++) {
         if (subsidiary == emailParameters.subsidiaries[i].id) {
@@ -133,13 +134,17 @@ define([
         transactionId: recId,
         customRecord: null,
       });
-      log.debug("email parameters", { sender, emailTemplate });
 
       for (let i = 0; i < bpRec.getLineCount("apply"); i++) {
         bpRec.selectLine({
           sublistId: "apply",
           line: i,
         });
+        let apply = bpRec.getCurrentSublistValue({
+          sublistId: "apply",
+          fieldId: "apply",
+        });
+
         let tranType = bpRec.getCurrentSublistValue({
           sublistId: "apply",
           fieldId: "trantype",
@@ -149,21 +154,53 @@ define([
           fieldId: "internalid",
         });
 
+        if(apply == false) continue
+        log.debug("apply", {apply,internalId,tranType})
         if (tranType == "VendBill") {
-          billIds.push(internalId);
+          if (
+            checkIfExcluded({
+              transactionType: "vendorbill",
+              recId: internalId,
+            }) == true
+          ) {
+            log.emergency("Already updated", internalId)
+
+          } else {
+            transactionToUpdate.push({
+              internalId: internalId,
+              transactionType: "vendorbill",
+            });
+          }
+        } else {
+          if (
+            checkIfExcluded({
+              transactionType: "journalentry",
+              recId: internalId,
+            }) == true
+          ) {
+            continue;
+
+          } else {
+            billIds.push(internalId);
+            transactionToUpdate.push({
+              internalId: internalId,
+              transactionType: "journalentry",
+            });
+          }
         }
       }
       let transanctionType = "";
       let allFileIds = [];
       let billFileIds = [];
       if (billIds.length > 0) {
-        transanctionType = "vendorbill";
+        transanctionType = "journalentry";
         billIds.forEach((recId) => {
           billFileIds.push(getAttachedFile({ recId, transanctionType }));
         });
       }
       transanctionType = "vendorpayment";
       let billPaymentFileIds = getAttachedFile({ recId, transanctionType });
+      log.debug("file", { billFileIds, billPaymentFileIds });
       allFileIds = [billFileIds, billPaymentFileIds];
 
       allFileIds = allFileIds.flat(2);
@@ -178,7 +215,13 @@ define([
         recipients: entity,
         subject: mailTemplate.subject,
         attachments: attachments,
+        relatedRecords: {
+          entityId: entity,
+          transactionId: recId,
+        },
       });
+      log.emergency("transactionToUpdate", transactionToUpdate);
+      updateExcludeRemitEmail(transactionToUpdate);
     } catch (e) {
       log.error("onAction", e.message);
     }
@@ -205,6 +248,7 @@ define([
   const getAttachedFile = (options) => {
     try {
       let arrAttachmentObjects = [];
+
       let purchaseReqSearchObj = search.create({
         type: options.transanctionType,
         filters: [
@@ -244,11 +288,67 @@ define([
 
         return true;
       });
+      log.debug("arrAttachmentObjects", arrAttachmentObjects);
+
       return arrAttachmentObjects;
     } catch (e) {
       log.error("getAttachedFile", e.message);
     }
   };
+
+  /**
+   * Update all of the bill/journal that is already email has been sent
+   * @param arrayObject - List of vendorbill/journal to be updated
+   *
+   */
+  function updateExcludeRemitEmail(arrayObject) {
+    let Id;
+    try {
+      arrayObject.forEach((arr) => {
+        try {
+          Id = record.submitFields({
+            type: arr.transactionType,
+            id: arr.internalId,
+            values: {
+              custbody_serp_exclude_remit_email: true,
+            },
+          });
+        } catch (e) {
+          log.error(arr.internalId, e.message);
+          if (arr.transactionType == "journal") {
+            Id = record.submitFields({
+              type: "advintercompanyjournalentry",
+              id: arr.internalId,
+              values: {
+                custbody_serp_exclude_remit_email: true,
+              },
+            });
+          }
+        }
+      });
+      log.debug("Successfully Updated", Id);
+    } catch (e) {
+      log.error("updateExcludeRemitEmail", e.message);
+    }
+  }
+
+  /**
+   * Check if the vendorpayment is excluded for sending email
+   * @param options.transactionType,
+   * @param options.recId
+   */
+  function checkIfExcluded(options) {
+    try {
+      const fieldLookup = search.lookupFields({
+        type: options.transactionType,
+        id: options.recId,
+        columns: ["custbody_serp_exclude_remit_email"],
+      });
+      return fieldLookup.custbody_serp_exclude_remit_email;
+    } catch (e) {
+      log.error("checkIfExcluded", e.message);
+    }
+  }
 
   function getParameters() {
     try {
