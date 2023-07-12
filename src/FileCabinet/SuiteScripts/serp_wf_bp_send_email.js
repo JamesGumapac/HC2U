@@ -209,17 +209,20 @@ define([
       allFileIds.forEach((internalid) =>
         attachments.push(file.load(internalid))
       );
-      email.send({
-        author: sender,
-        body: mailTemplate.body,
-        recipients: entity,
-        subject: mailTemplate.subject,
-        attachments: attachments,
-        relatedRecords: {
-          entityId: entity,
-          transactionId: recId,
-        },
-      });
+      if(transactionToUpdate.length > 0){
+        email.send({
+          author: sender,
+          body: mailTemplate.body,
+          recipients: entity,
+          subject: mailTemplate.subject,
+          attachments: attachments,
+          relatedRecords: {
+            entityId: entity,
+            transactionId: recId,
+          },
+        });
+      }
+
       log.emergency("transactionToUpdate", transactionToUpdate);
       updateExcludeRemitEmail(transactionToUpdate);
     } catch (e) {
